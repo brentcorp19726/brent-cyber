@@ -64,16 +64,20 @@
   /* Try the Express backend first; fall back to local hash check (static host). */
   async function authenticate(user, pass) {
     try {
-      const r = await fetch('/api/login', {
+      const r = await fetch('api/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ username: user, password: pass })
       });
+      // On a static host (e.g. GitHub Pages) there's no API: we get a 404 HTML
+      // page, not JSON. Treat that as "no backend" and use local auth.
+      const ct = r.headers.get('content-type') || '';
+      if (r.status === 404 || !ct.includes('application/json')) throw new Error('no-backend');
       if (r.status === 429) return { ok: false, msg: 'Too many attempts. Try again later.' };
       const data = await r.json().catch(() => ({}));
       return { ok: r.ok && data.ok === true, msg: data.message, server: true };
     } catch {
-      // No backend (e.g. GitHub Pages) -> local-only authentication
+      // local-only authentication
       const hash = await sha256(pass);
       return { ok: user === ADMIN_USER && hash === ADMIN_HASH, local: true };
     }

@@ -72,10 +72,12 @@
     const pw = $('#lockPw').value;
     let ok = false;
     try {
-      const r = await fetch('/api/verify', {
+      const r = await fetch('api/verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ password: pw })
       });
+      const ct = r.headers.get('content-type') || '';
+      if (r.status === 404 || !ct.includes('application/json')) throw new Error('no-backend');
       if (r.ok) ok = (await r.json()).ok === true; else throw 0;
     } catch { ok = (await sha256(pw)) === ADMIN_HASH; }
     if (ok) {
